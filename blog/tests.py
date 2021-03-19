@@ -75,7 +75,7 @@ class TestView(TestCase):
 
         # 2.2 '아직 게시물이 없습니다'라는 문구가 보인다.
         main_area = soup.find('div', id='main-area')
-        self.assertIn('아직 게시물이 없습니다', main_area.text)
+        self.assertNotIn('아직 게시물이 없습니다', main_area.text)
 
         post_001_card = main_area.find('div', id='post-1')
         self.assertIn(self.post_001.title, post_001_card.text)
