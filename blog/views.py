@@ -7,7 +7,7 @@ from django.core.exceptions import PermissionDenied
 
 
 # Create your views here.
-# test
+# test1604
 class PostList(ListView):
     model = Post
     ordering = '-pk'
