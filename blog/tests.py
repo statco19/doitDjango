@@ -1,18 +1,20 @@
 from django.test import TestCase, Client
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import User
-from .models import Post, Category, Tag
+from .models import Post, Category, Tag, Comment
+
 
 # Create your tests here.
+
 
 class TestView(TestCase):
 
     def setUp(self):
         self.client = Client()
         self.user_trump = User.objects.create_user(username='trump',
-    password='somepassword')
+                                                   password='somepassword')
         self.user_obama = User.objects.create_user(username='obama',
-    password='somepassword')
+                                                   password='somepassword')
         self.user_obama.is_staff = True
         self.user_obama.save()
 
@@ -46,6 +48,11 @@ class TestView(TestCase):
         self.post_003.tags.add(self.tag_python_kor)
         self.post_003.tags.add(self.tag_python)
 
+        self.comment_001 = Comment.objects.create(
+            post = self.post_001,
+            author = self.user_obama,
+            content = '첫 번째 댓글입니다. '
+        )
 
     def test_update_post(self):
         update_post_url = f'/blog/update_post/{self.post_003.pk}/'
@@ -95,18 +102,17 @@ class TestView(TestCase):
         self.assertIn('some tag', main_area.text)
         self.assertNotIn('python', main_area.text)
 
-
     def test_create_post(self):
-        #로그인 하지 않았을 때, status code가 200이면 안 됨.
+        # 로그인 하지 않았을 때, status code가 200이면 안 됨.
         response = self.client.get('/blog/create_post/')
         self.assertNotEqual(response.status_code, 200)
 
-        #staff가 아닌 trump가 로그인
+        # staff가 아닌 trump가 로그인
         self.client.login(username='trump', password='somepassword')
         response = self.client.get('/blog/create_post/')
         self.assertNotEqual(response.status_code, 200)
 
-        #staff인 obama가 로그인
+        # staff인 obama가 로그인
         self.client.login(username='obama', password='somepassword')
         response = self.client.get('/blog/create_post/')
         self.assertEqual(response.status_code, 200)
@@ -139,7 +145,6 @@ class TestView(TestCase):
         self.assertTrue(Tag.objects.get(name='한글 태그'))
         self.assertEqual(Tag.objects.count(), 5)
 
-
     def test_tag_page(self):
         response = self.client.get(self.tag_hello.get_absolute_url())
         self.assertEqual(response.status_code, 200)
@@ -155,7 +160,6 @@ class TestView(TestCase):
         self.assertIn(self.post_001.title, main_area.text)
         self.assertNotIn(self.post_002.title, main_area.text)
         self.assertNotIn(self.post_003.title, main_area.text)
-
 
     def test_category_page(self):
         response = self.client.get(self.category_programming.get_absolute_url())
@@ -201,7 +205,7 @@ class TestView(TestCase):
 
     def test_post_list(self):
         # 포스트가 있는 경우
-        self.assertEqual(Post.objects.count(),3)
+        self.assertEqual(Post.objects.count(), 3)
 
         response = self.client.get('/blog/')
         self.assertEqual(response.status_code, 200)
@@ -237,19 +241,18 @@ class TestView(TestCase):
         self.assertIn(self.tag_python_kor.name, post_003_card.text)
         self.assertIn(self.tag_python.name, post_003_card.text)
 
-        #self.assertIn(self.user_trump.username.upper(), main_area.text)
-        #self.assertIn(self.user_obama.username.upper(), main_area.text)
+        # self.assertIn(self.user_trump.username.upper(), main_area.text)
+        # self.assertIn(self.user_obama.username.upper(), main_area.text)
 
         # 포스트가 없는 경우
         Post.objects.all().delete()
-        self.assertEqual(Post.objects.count(),0)
+        self.assertEqual(Post.objects.count(), 0)
         response = self.client.get('/blog/')
         soup = BeautifulSoup(response.content, 'html.parser')
         main_area = soup.find('div', id='main-area')
         self.assertIn('아직 게시물이 없습니다', main_area.text)
 
     def test_post_detail(self):
-
         # 1.2 그 포스트의 url은 '/blog/1/'이다.
         self.assertEqual(self.post_001.get_absolute_url(), '/blog/1/')
 
@@ -282,3 +285,9 @@ class TestView(TestCase):
         self.assertNotIn(self.tag_python.name, post_area.text)
 
         self.assertIn(self.user_trump.username.upper(), main_area.text)
+
+        # comment area
+        comments_area = soup.find('div', id='comment-area')
+        comment_001_area = comments_area.find('div', id='comment-1')
+        self.assertIn(self.comment_001.author.username, comment_001_area.text)
+        self.assertIn(self.comment_001.content, comment_001_area.text)
